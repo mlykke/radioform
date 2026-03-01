@@ -145,7 +145,7 @@ In this build, `sizeof(RFSharedAudio)` is 264 bytes, and `audio_data[]` begins a
 | 20 | `bytes_per_sample` | `uint32_t` | Derived from format |
 | 24 | `bytes_per_frame` | `uint32_t` | `bytes_per_sample * channels` |
 | 28 | `ring_capacity_frames` | `uint32_t` | `sample_rate * duration_ms / 1000` |
-| 32 | `ring_duration_ms` | `uint32_t` | Default 40 (allowed 20-100) |
+| 32 | `ring_duration_ms` | `uint32_t` | Default 100 (allowed 20-100) |
 | 36 | `driver_capabilities` | `uint32_t` | `RF_CAP_*` bitmask |
 | 40 | `host_capabilities` | `uint32_t` | `RF_CAP_*` bitmask |
 | 48 | `creation_timestamp` | `uint64_t` | Unix epoch seconds |
@@ -170,8 +170,8 @@ In this build, `sizeof(RFSharedAudio)` is 264 bytes, and `audio_data[]` begins a
 sizeof(RFSharedAudio) + (ring_capacity_frames * channels * bytes_per_sample)
 ```
 
-Example at 48 kHz, 2 channels, float32, 40 ms (in this build):
-`264 + (1920 * 2 * 4) = 15624` bytes.
+Example at 48 kHz, 2 channels, float32, 100 ms (in this build):
+`264 + (4800 * 2 * 4) = 38664` bytes.
 
 ### Ring buffer behavior
 
@@ -282,5 +282,5 @@ log show --predicate 'subsystem == "com.radioform.driver"' --last 5m
 | `STATS_LOG_INTERVAL_SEC` | 30 |
 | `DEVICE_COOLDOWN_SEC` | 10 |
 | `RF_MAX_CHANNELS` | 8 |
-| `RF_RING_DURATION_MS_DEFAULT` | 40 |
+| `RF_RING_DURATION_MS_DEFAULT` | 100 |
 | `RF_AUDIO_PROTOCOL_VERSION` | `0x00020000` |

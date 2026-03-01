@@ -76,12 +76,13 @@ Shutdown path:
 | `defaultSampleRate` | Fallback/default sample rate (48000) |
 | `defaultChannels` | 2 |
 | `defaultFormat` | `RF_FORMAT_FLOAT32` |
-| `defaultDurationMs` | 40 |
+| `defaultDurationMs` | 100 |
 | `heartbeatInterval` | 1.0s |
 | `presetMonitorInterval` | 0.5s |
 | `deviceWaitTimeout` | 2.0s |
 | `cleanupWaitTimeout` | 1.2s |
 | `physicalDeviceSwitchDelay` | 0.5s |
+| `wakeRecoveryDelay` | 1.5s |
 
 ## Build
 

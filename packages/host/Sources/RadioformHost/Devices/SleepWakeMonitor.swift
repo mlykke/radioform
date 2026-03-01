@@ -44,6 +44,10 @@ class SleepWakeMonitor {
             IOObjectRelease(notifyIterator)
             notifyIterator = 0
         }
+        if rootPort != 0 {
+            IOServiceClose(rootPort)
+            rootPort = 0
+        }
     }
 
     fileprivate func handleMessage(_ messageType: UInt32, messageArg: UnsafeMutableRawPointer?) {
@@ -51,7 +55,9 @@ class SleepWakeMonitor {
         case kIOMessageSystemWillSleepValue:
             print("[SleepWake] System will sleep")
             onSleep?()
-            IOAllowPowerChange(rootPort, Int(bitPattern: messageArg))
+            if rootPort != 0, let messageArg {
+                IOAllowPowerChange(rootPort, Int(bitPattern: messageArg))
+            }
 
         case kIOMessageSystemHasPoweredOnValue:
             print("[SleepWake] System did wake — scheduling recovery in \(RadioformConfig.wakeRecoveryDelay)s")
@@ -60,7 +66,7 @@ class SleepWakeMonitor {
             }
 
         default:
-            IOAllowPowerChange(rootPort, Int(bitPattern: messageArg))
+            break
         }
     }
 }

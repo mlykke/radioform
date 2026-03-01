@@ -11,6 +11,8 @@ class DeviceMonitor {
     private var lastHandledTime: Date = .distantPast
     private let callbackDebounce: TimeInterval = 0.3
     private var listenersRegistered = false
+    private var devicesListenerRegistered = false
+    private var defaultOutputListenerRegistered = false
 
     init(
         registry: DeviceRegistry,
@@ -28,7 +30,6 @@ class DeviceMonitor {
 
     func registerListeners() {
         guard !listenersRegistered else { return }
-        listenersRegistered = true
 
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
 
@@ -37,28 +38,38 @@ class DeviceMonitor {
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        AudioObjectAddPropertyListener(
+        let devicesStatus = AudioObjectAddPropertyListener(
             AudioObjectID(kAudioObjectSystemObject),
             &devicesAddress,
             deviceListChangedCallbackC,
             selfPtr
         )
+        devicesListenerRegistered = (devicesStatus == noErr)
+        if devicesStatus != noErr {
+            print("[DeviceMonitor] ERROR: Failed to register devices listener (\(devicesStatus))")
+        }
 
         var defaultOutputAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        AudioObjectAddPropertyListener(
+        let outputStatus = AudioObjectAddPropertyListener(
             AudioObjectID(kAudioObjectSystemObject),
             &defaultOutputAddress,
             defaultOutputChangedCallbackC,
             selfPtr
         )
+        defaultOutputListenerRegistered = (outputStatus == noErr)
+        if outputStatus != noErr {
+            print("[DeviceMonitor] ERROR: Failed to register default output listener (\(outputStatus))")
+        }
+
+        listenersRegistered = devicesListenerRegistered && defaultOutputListenerRegistered
     }
 
     private func removeListeners() {
-        guard listenersRegistered else { return }
+        guard devicesListenerRegistered || defaultOutputListenerRegistered else { return }
         listenersRegistered = false
 
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
@@ -68,24 +79,30 @@ class DeviceMonitor {
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        AudioObjectRemovePropertyListener(
-            AudioObjectID(kAudioObjectSystemObject),
-            &devicesAddress,
-            deviceListChangedCallbackC,
-            selfPtr
-        )
+        if devicesListenerRegistered {
+            AudioObjectRemovePropertyListener(
+                AudioObjectID(kAudioObjectSystemObject),
+                &devicesAddress,
+                deviceListChangedCallbackC,
+                selfPtr
+            )
+            devicesListenerRegistered = false
+        }
 
         var defaultOutputAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        AudioObjectRemovePropertyListener(
-            AudioObjectID(kAudioObjectSystemObject),
-            &defaultOutputAddress,
-            defaultOutputChangedCallbackC,
-            selfPtr
-        )
+        if defaultOutputListenerRegistered {
+            AudioObjectRemovePropertyListener(
+                AudioObjectID(kAudioObjectSystemObject),
+                &defaultOutputAddress,
+                defaultOutputChangedCallbackC,
+                selfPtr
+            )
+            defaultOutputListenerRegistered = false
+        }
     }
 
     func reregisterListeners() {

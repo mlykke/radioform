@@ -116,6 +116,11 @@ public:
         ratio_ = from_rate_ / to_rate_;
     }
 
+    void SetChannels(uint32_t channels)
+    {
+        channels_ = std::max<uint32_t>(1, channels);
+    }
+
     // Resample input to output
     // Returns number of output frames produced
     uint32_t Process(const float* input, uint32_t input_frames,
@@ -296,7 +301,8 @@ public:
         , last_host_hb_change_(std::chrono::steady_clock::now())
         , current_sample_rate_(DEFAULT_SAMPLE_RATE)
         , current_channels_(DEFAULT_CHANNELS)
-        , resampler_()
+        , resampler_(std::make_unique<SimpleResampler>(
+            DEFAULT_SAMPLE_RATE, DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS))
     {
         std::string safe_uid = deviceUID;
         for (char& c : safe_uid) {
@@ -483,12 +489,13 @@ public:
             }
         } else {
             if (prepend_silence_frames > 0) {
-                const size_t silence_needed = prepend_silence_frames * fmt.mChannelsPerFrame;
-                if (silence_buf_.size() < silence_needed) {
-                    silence_buf_.resize(silence_needed, 0.0f);
-                } else {
-                    std::fill_n(silence_buf_.begin(), silence_needed, 0.0f);
+                const size_t available_silence_frames =
+                    silence_buf_.size() / fmt.mChannelsPerFrame;
+                if (prepend_silence_frames > available_silence_frames) {
+                    prepend_silence_frames = static_cast<uint32_t>(available_silence_frames);
                 }
+                const size_t silence_needed = prepend_silence_frames * fmt.mChannelsPerFrame;
+                std::fill_n(silence_buf_.begin(), silence_needed, 0.0f);
                 WriteWithAdaptiveDriftCompensation(silence_buf_.data(), prepend_silence_frames,
                                                    fmt.mSampleRate, fmt.mChannelsPerFrame);
             }
@@ -590,7 +597,9 @@ private:
             shared_memory_ = nullptr;
         }
 
-        resampler_.reset();
+        if (resampler_) {
+            resampler_->Reset();
+        }
     }
 
     bool ValidateConnection() {
@@ -704,6 +713,9 @@ private:
 
         interleaved_buf_.resize(max_frames * max_channels);
         resampled_buf_.resize(max_frames * 2 * max_channels); // 2x for upsampling headroom
+        const uint32_t max_silence_frames = std::max<uint32_t>(
+            1, shared_memory_->ring_capacity_frames / 2);
+        silence_buf_.resize(max_silence_frames * max_channels, 0.0f);
     }
 
     void HandleFormatChange(const AudioStreamBasicDescription& new_fmt) {
@@ -712,14 +724,10 @@ private:
         current_sample_rate_ = (uint32_t)new_fmt.mSampleRate;
         current_channels_ = new_fmt.mChannelsPerFrame;
 
-        // Update or create resampler if needed
-        if (shared_memory_ && new_fmt.mSampleRate != shared_memory_->sample_rate) {
-            resampler_ = std::make_unique<SimpleResampler>(
-                new_fmt.mSampleRate,
-                shared_memory_->sample_rate,
-                new_fmt.mChannelsPerFrame);
-
-            RF_LOG_INFO("Created resampler: %.0f -> %u Hz",
+        if (shared_memory_ && resampler_) {
+            resampler_->SetChannels(new_fmt.mChannelsPerFrame);
+            resampler_->SetRates(new_fmt.mSampleRate, shared_memory_->sample_rate);
+            RF_LOG_INFO("Configured resampler: %.0f -> %u Hz",
                 new_fmt.mSampleRate, shared_memory_->sample_rate);
         }
 
@@ -777,11 +785,9 @@ private:
     void ProcessWithSampleRateConversion(const float* input, uint32_t input_frames,
                                         double input_rate, double output_rate,
                                         uint32_t channels) {
-        if (!resampler_) {
-            resampler_ = std::make_unique<SimpleResampler>(input_rate, output_rate, channels);
-        } else {
-            resampler_->SetRates(input_rate, output_rate);
-        }
+        if (!resampler_) return;
+        resampler_->SetChannels(channels);
+        resampler_->SetRates(input_rate, output_rate);
 
         stats_.sample_rate_conversions++;
 
