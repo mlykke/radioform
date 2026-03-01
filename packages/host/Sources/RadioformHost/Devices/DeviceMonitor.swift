@@ -10,6 +10,7 @@ class DeviceMonitor {
     private var lastHandledDeviceID: AudioDeviceID = 0
     private var lastHandledTime: Date = .distantPast
     private let callbackDebounce: TimeInterval = 0.3
+    private var listenersRegistered = false
 
     init(
         registry: DeviceRegistry,
@@ -26,25 +27,20 @@ class DeviceMonitor {
     }
 
     func registerListeners() {
+        guard !listenersRegistered else { return }
+        listenersRegistered = true
+
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+
         var devicesAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-
-        let deviceListCallback: AudioObjectPropertyListenerProc = { _, _, _, clientData in
-            guard let clientData = clientData else { return noErr }
-            let monitor = Unmanaged<DeviceMonitor>.fromOpaque(clientData).takeUnretainedValue()
-            monitor.handleDeviceListChanged()
-            return noErr
-        }
-
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-
         AudioObjectAddPropertyListener(
             AudioObjectID(kAudioObjectSystemObject),
             &devicesAddress,
-            deviceListCallback,
+            deviceListChangedCallbackC,
             selfPtr
         )
 
@@ -53,23 +49,57 @@ class DeviceMonitor {
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-
-        let defaultOutputCallback: AudioObjectPropertyListenerProc = { _, _, _, clientData in
-            guard let clientData = clientData else { return noErr }
-            let monitor = Unmanaged<DeviceMonitor>.fromOpaque(clientData).takeUnretainedValue()
-            monitor.handleDefaultOutputChanged()
-            return noErr
-        }
-
         AudioObjectAddPropertyListener(
             AudioObjectID(kAudioObjectSystemObject),
             &defaultOutputAddress,
-            defaultOutputCallback,
+            defaultOutputChangedCallbackC,
             selfPtr
         )
     }
 
-    private func handleDeviceListChanged() {
+    private func removeListeners() {
+        guard listenersRegistered else { return }
+        listenersRegistered = false
+
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+
+        var devicesAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectRemovePropertyListener(
+            AudioObjectID(kAudioObjectSystemObject),
+            &devicesAddress,
+            deviceListChangedCallbackC,
+            selfPtr
+        )
+
+        var defaultOutputAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectRemovePropertyListener(
+            AudioObjectID(kAudioObjectSystemObject),
+            &defaultOutputAddress,
+            defaultOutputChangedCallbackC,
+            selfPtr
+        )
+    }
+
+    func reregisterListeners() {
+        removeListeners()
+        registerListeners()
+        print("[DeviceMonitor] Listeners re-registered after wake")
+    }
+
+    func resetDebounce() {
+        lastHandledDeviceID = 0
+        lastHandledTime = .distantPast
+    }
+
+    fileprivate func handleDeviceListChanged() {
         let oldDevices = registry.devices
         let newDevices = discovery.enumeratePhysicalDevices()
 
@@ -97,7 +127,7 @@ class DeviceMonitor {
         }
     }
 
-    private func handleDefaultOutputChanged() {
+    fileprivate func handleDefaultOutputChanged() {
         var propertyAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -196,4 +226,30 @@ class DeviceMonitor {
 
         return deviceUID as String
     }
+}
+
+// File-level C callbacks — stable function pointers required for AudioObjectRemovePropertyListener.
+// AudioObjectPropertyListenerProc requires non-optional UnsafePointer<AudioObjectPropertyAddress>.
+private func deviceListChangedCallbackC(
+    _ objectID: AudioObjectID,
+    _ numAddresses: UInt32,
+    _ addresses: UnsafePointer<AudioObjectPropertyAddress>,
+    _ clientData: UnsafeMutableRawPointer?
+) -> OSStatus {
+    guard let clientData else { return noErr }
+    Unmanaged<DeviceMonitor>.fromOpaque(clientData).takeUnretainedValue()
+        .handleDeviceListChanged()
+    return noErr
+}
+
+private func defaultOutputChangedCallbackC(
+    _ objectID: AudioObjectID,
+    _ numAddresses: UInt32,
+    _ addresses: UnsafePointer<AudioObjectPropertyAddress>,
+    _ clientData: UnsafeMutableRawPointer?
+) -> OSStatus {
+    guard let clientData else { return noErr }
+    Unmanaged<DeviceMonitor>.fromOpaque(clientData).takeUnretainedValue()
+        .handleDefaultOutputChanged()
+    return noErr
 }

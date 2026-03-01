@@ -511,6 +511,27 @@ class ProxyDeviceManager {
         enqueueProxyVolumeForward()
     }
 
+    /// Re-register the proxy volume listener after sleep/wake.
+    ///
+    /// coreaudiod silently drops all AudioObjectAddPropertyListener registrations
+    /// when it restarts (which happens on sleep/wake). Calling startVolumeForwarding
+    /// directly would no-op if the proxy device ID is unchanged (the common case),
+    /// so we force teardown first to clear monitoredProxyDeviceID and bypass that guard.
+    func reregisterVolumeForwarding() {
+        // stopVolumeForwarding clears monitoredProxyDeviceID, so the same-ID
+        // early-return guard in startVolumeForwarding will not block re-registration.
+        stopVolumeForwarding()
+
+        guard activeProxyDeviceID != 0 else {
+            print("[VolumeForward] No active proxy — skipping re-registration")
+            return
+        }
+
+        startVolumeForwarding(proxyDeviceID: activeProxyDeviceID)
+        enqueueProxyVolumeForward(force: true)
+        print("[VolumeForward] Volume listener re-registered after wake")
+    }
+
     private func enqueueProxyVolumeForward(force: Bool = false) {
         let proxyDeviceID = activeProxyDeviceID
         let physicalDeviceID = activePhysicalDeviceID

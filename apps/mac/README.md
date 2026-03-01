@@ -1,13 +1,35 @@
-# apps/mac/
+# `apps/mac`
 
-macOS application targets for Radioform.
+macOS application layer for Radioform.
 
-## Structure
 
-- **RadioformApp/**: SwiftUI menu bar application (UX + preferences)
+## Scope
 
-## Architecture
+- `RadioformApp/`: SwiftUI/AppKit menu bar application for onboarding, settings, and EQ controls.
 
-The menu bar app and audio host are **separate processes**. The app communicates with the host via a JSON control file at `~/Library/Application Support/Radioform/preset.json`, ensuring that UI crashes never kill audio.
+## Runtime Model
 
-The audio host (`packages/host/`) is a separate headless process launched by the app; it runs independently of the UI while the app is open.
+Radioform on macOS is intentionally split into processes:
+
+- `RadioformApp` (this directory): UI and orchestration.
+- `RadioformHost` (`packages/host`): headless audio process.
+- `RadioformDriver` (`packages/driver`): CoreAudio HAL plugin.
+
+The UI and host communicate through file-based state (`~/Library/Application Support/Radioform/preset.json`).
+
+Important lifecycle detail:
+
+- While the app is running, UI failures are less likely to immediately disrupt host audio because the host is a separate process.
+- When the app terminates normally, it performs cleanup and explicitly stops `RadioformHost`.
+
+## Ownership Boundaries
+
+- UI code and app-level orchestration: `apps/mac/RadioformApp`.
+- Real-time audio processing: `packages/dsp` and `packages/host`.
+- Driver install/runtime behavior: `packages/driver`.
+
+## Related Docs
+
+- App developer runbook: `apps/mac/RadioformApp/README.md`
+- Host internals: `packages/host/README.md`
+- Driver internals and install flow: `packages/driver/README.md`
