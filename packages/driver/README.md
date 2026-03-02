@@ -112,14 +112,14 @@ IO clients are reference-counted; `OnStopIO` disconnects shared memory when the 
 
 This callback runs on the audio IO thread for each buffer. It:
 
-1. Runs a health check every 3 seconds
-2. Updates `driver_heartbeat` roughly every 1 second
-3. Reads current stream `AudioStreamBasicDescription`
-4. Rebuilds conversion/resampler state on format changes (sample rate/channel count)
-5. Converts input to interleaved float32
+1. Updates `driver_heartbeat` and `driver_connected` via `rf_update_driver_heartbeat()`
+2. Reads current stream `AudioStreamBasicDescription`
+3. Rebuilds conversion/resampler state on format changes (sample rate/channel count)
+4. Converts input to interleaved float32
+5. Compensates timestamp gaps/overlaps by prepending silence or skipping frames
 6. Applies linear-interpolation sample-rate conversion when needed
-7. Writes frames with `rf_ring_write()`
-8. Logs periodic stats every 30 seconds
+7. Applies adaptive drift compensation around target ring fill
+8. Writes frames with `rf_ring_write()` and logs periodic stats every 30 seconds
 
 Implemented input conversion paths in `ConvertToFloat32Interleaved()`:
 
@@ -184,24 +184,19 @@ Single producer (driver) and single consumer (host), with monotonically increasi
 
 ## Health monitoring
 
-During active IO, health checks run every 3 seconds:
+Current liveness checks are applied during proxy-device sync (not in the per-buffer IO callback path):
 
-| Check | Failure condition |
-|---|---|
-| File existence | Shared memory file missing |
-| Host connection | `host_connected == 0` |
-| Host heartbeat | No `host_heartbeat` change for >= 5 seconds |
-| Ring integrity | `write_index < read_index` |
-| Ring capacity | `write_index - read_index > ring_capacity_frames` |
+- `HostHeartbeatFresh()` maps `/tmp/radioform-<uid>` read-only, tracks `host_heartbeat` changes, and treats heartbeat as stale after 5 seconds with no change.
+- `SyncDevices()` only keeps/adds devices with fresh heartbeat state; stale entries are skipped and existing stale devices are removed.
 
-On failure, the driver attempts recovery by disconnecting, reopening shared memory, and re-validating.
+`UniversalAudioHandler` also includes `IsHealthy()` and `AttemptRecovery()` helpers for shared-memory/file/ring validation, but they are not currently called from `OnWriteMixedOutput()`.
 
 ## Heartbeat protocol
 
-- Driver calls `rf_update_driver_heartbeat()` during `OnWriteMixedOutput` (~1s cadence).
-- Host calls `rf_update_host_heartbeat()` on a timer (`DispatchSourceTimer` in host code).
+- Driver calls `rf_update_driver_heartbeat()` on each `OnWriteMixedOutput` callback.
+- Host calls `rf_update_host_heartbeat()` on a timer (`DispatchSourceTimer` in host code, default 1s interval).
 
-A host heartbeat older than 5 seconds is treated as stale.
+A host heartbeat with no observed change for 5 seconds is treated as stale by `HostHeartbeatFresh()`.
 
 ## Building
 
@@ -276,8 +271,8 @@ log show --predicate 'subsystem == "com.radioform.driver"' --last 5m
 |---|---|
 | `DEFAULT_SAMPLE_RATE` | 48000 |
 | `DEFAULT_CHANNELS` | 2 |
-| `HEALTH_CHECK_INTERVAL_SEC` | 3 |
-| `HEARTBEAT_INTERVAL_SEC` | 1 |
+| `HEALTH_CHECK_INTERVAL_SEC` | 3 (defined; helper currently not invoked from callback loop) |
+| `HEARTBEAT_INTERVAL_SEC` | 1 (defined; driver heartbeat is currently callback-driven) |
 | `HEARTBEAT_TIMEOUT_SEC` | 5 |
 | `STATS_LOG_INTERVAL_SEC` | 30 |
 | `DEVICE_COOLDOWN_SEC` | 10 |

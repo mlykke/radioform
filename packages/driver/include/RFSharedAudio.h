@@ -23,25 +23,24 @@ typedef enum {
     RF_FORMAT_INT32 = 4
 } RFAudioFormat;
 
-// Supported sample rates (like eqMac)
+// Supported nominal sample rates.
 static const uint32_t RF_SUPPORTED_SAMPLE_RATES[] = {
-    44100,   // CD quality
-    48000,   // Standard digital audio
-    88200,   // 2x CD
-    96000,   // High-res
-    176400,  // 4x CD
-    192000   // Ultra high-res
+    44100,   // 44.1 kHz
+    48000,   // 48 kHz
+    88200,   // 88.2 kHz
+    96000,   // 96 kHz
+    176400,  // 176.4 kHz
+    192000   // 192 kHz
 };
 #define RF_NUM_SAMPLE_RATES 6
 
-// Channel configurations
-#define RF_MAX_CHANNELS 8  // Support up to 7.1 surround
+// Channel configuration
+#define RF_MAX_CHANNELS 8  // Up to 7.1 channel layouts
 
-// Ring buffer capacity calculation
-// We use milliseconds to be sample-rate independent
-#define RF_RING_DURATION_MS_MIN 20    // Minimum 20ms
-#define RF_RING_DURATION_MS_MAX 100   // Maximum 100ms
-#define RF_RING_DURATION_MS_DEFAULT 100  // Default 100ms
+// Ring buffer duration limits (sample-rate independent).
+#define RF_RING_DURATION_MS_MIN 20
+#define RF_RING_DURATION_MS_MAX 100
+#define RF_RING_DURATION_MS_DEFAULT 100
 
 // Calculate frames for given sample rate and duration
 static inline uint32_t rf_frames_for_duration(uint32_t sample_rate, uint32_t duration_ms) {
@@ -49,14 +48,7 @@ static inline uint32_t rf_frames_for_duration(uint32_t sample_rate, uint32_t dur
 }
 
 /**
- * Shared memory structure
- *
- * This version supports:
- * - Multiple sample rates (44.1 - 192 kHz)
- * - Multiple formats (float32, float64, int16, int24, int32)
- * - Variable channel counts (1-8 channels)
- * - Dynamic buffer sizing based on sample rate
- * - Format negotiation between driver and host
+ * Shared memory protocol header plus flexible audio payload.
  */
 typedef struct {
     // ===== PROTOCOL INFO =====
@@ -96,10 +88,10 @@ typedef struct {
     // ===== STATUS FLAGS =====
     _Atomic uint32_t driver_connected;   // 1 if driver is connected
     _Atomic uint32_t host_connected;     // 1 if host is connected
-    _Atomic uint64_t driver_heartbeat;   // Increments every second
-    _Atomic uint64_t host_heartbeat;     // Increments every second
+    _Atomic uint64_t driver_heartbeat;   // Incremented by driver write callbacks
+    _Atomic uint64_t host_heartbeat;     // Incremented by host heartbeat timer
 
-    // Padding to 256 bytes for future expansion
+    // Reserved bytes for forward-compatible header growth.
     uint8_t _reserved[256 - 136];
 
     // ===== RING BUFFER DATA =====

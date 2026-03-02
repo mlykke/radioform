@@ -10,20 +10,20 @@ ZIP_PATH="dist/Radioform.zip"
 echo ""
 echo " Notarizing Radioform.app..."
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo "  Checking Prerequisites"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 
 # Check if app exists
 if [ ! -d "$APP_PATH" ]; then
-    echo "❌ ERROR: $APP_PATH not found"
+    echo "ERROR: $APP_PATH not found"
     echo "   Run 'make bundle' and 'make sign' first"
     exit 1
 fi
 
 # Check for required environment variables
 if [ -z "$APPLE_ID" ]; then
-    echo "❌ ERROR: APPLE_ID environment variable not set"
+    echo "ERROR: APPLE_ID environment variable not set"
     echo ""
     echo "Set your Apple ID email:"
     echo "  export APPLE_ID=\"your.email@example.com\""
@@ -32,10 +32,10 @@ if [ -z "$APPLE_ID" ]; then
 fi
 
 if [ -z "$APPLE_ID_PASSWORD" ]; then
-    echo "❌ ERROR: APPLE_ID_PASSWORD environment variable not set"
+    echo "ERROR: APPLE_ID_PASSWORD environment variable not set"
     echo ""
     echo "This must be an app-specific password, NOT your Apple ID password!"
-    echo "Create one at: https://appleid.apple.com/ → Security → App-Specific Passwords"
+    echo "Create one at: https://appleid.apple.com/ -> Security -> App-Specific Passwords"
     echo ""
     echo "Then set it:"
     echo "  export APPLE_ID_PASSWORD=\"xxxx-xxxx-xxxx-xxxx\""
@@ -44,9 +44,9 @@ if [ -z "$APPLE_ID_PASSWORD" ]; then
 fi
 
 if [ -z "$APPLE_TEAM_ID" ]; then
-    echo "❌ ERROR: APPLE_TEAM_ID environment variable not set"
+    echo "ERROR: APPLE_TEAM_ID environment variable not set"
     echo ""
-    echo "Find your Team ID at: https://developer.apple.com/account/ → Membership"
+    echo "Find your Team ID at: https://developer.apple.com/account/ -> Membership"
     echo "Or from your certificate: security find-identity -v -p codesigning"
     echo ""
     echo "Then set it:"
@@ -55,27 +55,27 @@ if [ -z "$APPLE_TEAM_ID" ]; then
     exit 1
 fi
 
-echo "✓ App found: $APP_PATH"
-echo "✓ Apple ID: $APPLE_ID"
-echo "✓ Team ID: $APPLE_TEAM_ID"
-echo "✓ App-specific password: ****"
+echo "OK: App found: $APP_PATH"
+echo "OK: Apple ID: $APPLE_ID"
+echo "OK: Team ID: $APPLE_TEAM_ID"
+echo "OK: App-specific password: ****"
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo "  Creating ZIP Archive"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 
 # Remove old zip if exists
 rm -f "$ZIP_PATH"
 
 # Create zip for notarization
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
-echo "✓ Created $ZIP_PATH"
+echo "OK: Created $ZIP_PATH"
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo "  Submitting to Apple Notary Service"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo ""
 echo "This may take a few minutes..."
 echo ""
@@ -92,7 +92,7 @@ NOTARIZATION_RESULT=$?
 
 if [ $NOTARIZATION_RESULT -ne 0 ]; then
     echo ""
-    echo "❌ Notarization failed!"
+    echo "ERROR: Notarization failed!"
     echo ""
     echo "To see detailed logs, run:"
     echo "  xcrun notarytool log <submission-id> --apple-id \"$APPLE_ID\" --password \"$APPLE_ID_PASSWORD\" --team-id \"$APPLE_TEAM_ID\""
@@ -100,27 +100,27 @@ if [ $NOTARIZATION_RESULT -ne 0 ]; then
 fi
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo "  Stapling Notarization Ticket"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 
 # Staple the notarization ticket to the app
 xcrun stapler staple "$APP_PATH"
 
-echo "✓ Notarization ticket stapled to app"
+echo "OK: Notarization ticket stapled to app"
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo "  Verifying Notarization"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 
 # Verify the notarization
 spctl --assess -vv "$APP_PATH"
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo "     Notarization Complete!"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "----------------------------------------"
 echo ""
 echo "Your app is now notarized and ready for distribution!"
 echo "Location: $APP_PATH"

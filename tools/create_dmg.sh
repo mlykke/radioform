@@ -16,13 +16,13 @@ BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}----------------------------------------${NC}"
 echo -e "${BLUE}  Creating Radioform DMG${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}----------------------------------------${NC}"
 
 # Check if app bundle exists
 if [ ! -d "$APP_BUNDLE" ]; then
-    echo "❌ Error: Radioform.app not found at $APP_BUNDLE"
+    echo "ERROR: Radioform.app not found at $APP_BUNDLE"
     echo "Run 'make bundle' first"
     exit 1
 fi
@@ -40,7 +40,7 @@ if ! command -v create-dmg &> /dev/null; then
     rm -f "$DMG_PATH"
     hdiutil create -volname "Radioform" -srcfolder "$PROJECT_ROOT/dist/dmg_temp" -ov -format UDZO -fs HFS+ "$DMG_PATH"
     rm -rf "$PROJECT_ROOT/dist/dmg_temp"
-    echo -e "${GREEN}✓ DMG created (basic layout)${NC}"
+    echo -e "${GREEN}OK: DMG created (basic layout)${NC}"
     exit 0
 fi
 
@@ -50,7 +50,7 @@ if [ ! -f "$BACKGROUND_IMG" ]; then
     echo "Creating DMG without custom background..."
     BACKGROUND_ARG=""
 else
-    echo "📷 Using custom background: $BACKGROUND_IMG"
+    echo "INFO: Using custom background: $BACKGROUND_IMG"
     BACKGROUND_ARG="--background $BACKGROUND_IMG"
 fi
 
@@ -73,13 +73,13 @@ create-dmg \
     "$APP_BUNDLE"
 
 echo ""
-echo -e "${GREEN}✓ DMG created successfully!${NC}"
+echo -e "${GREEN}OK: DMG created successfully!${NC}"
 echo ""
 echo "Location: $DMG_PATH"
 echo "Size: $(du -h "$DMG_PATH" | cut -f1)"
 echo ""
 echo "Next steps:"
-echo "  • Sign: codesign --sign \"Developer ID Application\" \"$DMG_PATH\""
-echo "  • Notarize: xcrun notarytool submit \"$DMG_PATH\" ..."
-echo "  • Test: open \"$DMG_PATH\""
+echo "  - Sign: codesign --sign \"Developer ID Application\" \"$DMG_PATH\""
+echo "  - Notarize: xcrun notarytool submit \"$DMG_PATH\" ..."
+echo "  - Test: open \"$DMG_PATH\""
 echo ""

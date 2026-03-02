@@ -15,16 +15,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-error() { echo -e "${RED}❌ $1${NC}" >&2; }
-success() { echo -e "${GREEN}✓ $1${NC}"; }
+error() { echo -e "${RED}ERROR: $1${NC}" >&2; }
+success() { echo -e "${GREEN}OK: $1${NC}"; }
 warn() { echo -e "${YELLOW}  $1${NC}"; }
-info() { echo -e "${BLUE}ℹ $1${NC}"; }
+info() { echo -e "${BLUE}INFO: $1${NC}"; }
 
 section() {
     echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}----------------------------------------${NC}"
     echo -e "${BLUE}  $1${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}----------------------------------------${NC}"
 }
 
 if [ ! -d "$APP_BUNDLE" ]; then
@@ -73,16 +73,16 @@ verify_component() {
 
     # Check for hardened runtime
     if codesign -dv "$component" 2>&1 | grep -q "runtime"; then
-        echo "   Hardened Runtime: ✓ Enabled"
+        echo "   Hardened Runtime: Enabled"
     else
-        warn "   Hardened Runtime: ✗ Disabled"
+        warn "   Hardened Runtime: Disabled"
     fi
 
     # Check for timestamp
     if codesign -dv "$component" 2>&1 | grep -q "Timestamp"; then
-        echo "   Timestamp: ✓ Present"
+        echo "   Timestamp: Present"
     else
-        warn "   Timestamp: ✗ Missing"
+        warn "   Timestamp: Missing"
     fi
 
     # Display entitlements if present
@@ -133,14 +133,14 @@ if [ $FAILED -eq 0 ]; then
     success "All signatures valid!"
     echo ""
     echo "Status:"
-    echo "  ✓ All components signed"
-    echo "  ✓ Signatures verified"
-    echo "  ✓ Hardened runtime enabled"
+    echo "  OK: All components signed"
+    echo "  OK: Signatures verified"
+    echo "  OK: Hardened runtime enabled"
 
     if spctl --assess --type execute "$APP_BUNDLE" 2>/dev/null; then
-        echo "  ✓ Gatekeeper approved"
+        echo "  OK: Gatekeeper approved"
     else
-        echo "  ⚠ Awaiting notarization"
+        echo "  WARN: Awaiting notarization"
     fi
 
     echo ""
@@ -155,9 +155,9 @@ else
     error "$FAILED component(s) failed verification"
     echo ""
     echo "Common issues:"
-    echo "  • Run code signing: ./tools/codesign.sh"
-    echo "  • Check Developer ID certificate is installed"
-    echo "  • Verify entitlements files exist"
+    echo "  - Run code signing: ./tools/codesign.sh"
+    echo "  - Check Developer ID certificate is installed"
+    echo "  - Verify entitlements files exist"
     echo ""
     exit 1
 fi

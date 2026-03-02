@@ -1,5 +1,4 @@
-// Radioform HAL Driver
-// Universal audio driver
+// Radioform HAL driver implementation.
 
 #include <aspl/Driver.hpp>
 #include <CoreAudio/AudioServerPlugIn.h>
@@ -66,7 +65,7 @@ constexpr int ADAPTIVE_FILL_TARGET_DIVISOR = 2;     // Keep ring near 50% full
 constexpr int ADAPTIVE_FILL_DEADBAND_PERCENT = 8;   // Ignore small fill variance
 constexpr double ADAPTIVE_MAX_ADJUST_PPM = 1500.0;  // +/-0.15% drift correction
 
-// Health monitoring
+// Health and heartbeat timing constants.
 constexpr int HEALTH_CHECK_INTERVAL_SEC = 3;
 constexpr int HEARTBEAT_INTERVAL_SEC = 1;
 constexpr int STATS_LOG_INTERVAL_SEC = 30;
@@ -160,7 +159,7 @@ private:
     double position_;
 };
 
-// Comprehensive statistics
+// Runtime statistics.
 struct AudioStats {
     std::atomic<uint64_t> total_writes{0};
     std::atomic<uint64_t> failed_writes{0};
@@ -286,7 +285,7 @@ private:
     UInt64 clockSeed_;       // increments on sample-rate change to signal HAL re-sync
 };
 
-// ULTIMATE Handler - handles ANY format, sample rate, channel count
+// IO/control handler for one proxy device.
 class UniversalAudioHandler : public aspl::ControlRequestHandler, public aspl::IORequestHandler
 {
 public:
@@ -331,7 +330,7 @@ public:
         if (count == 1) {
             state_ = DeviceState::Connecting;
 
-            // Aggressive retry with exponential backoff
+            // Retry loop with exponential backoff.
             const int MAX_RETRIES = 15;
             const int BASE_DELAY_MS = 30;
 
@@ -361,7 +360,6 @@ public:
                                 prefill, prefill * 1000 / shared_memory_->sample_rate);
                         }
 
-                        // Start heartbeat
                         last_heartbeat_ = std::chrono::steady_clock::now();
                         return kAudioHardwareNoError;
                     } else {
@@ -377,7 +375,7 @@ public:
                 }
             }
 
-            // Failed
+            // All retries failed.
             --io_client_count_;
             state_ = DeviceState::Error;
             PrintDetailedError();
@@ -858,7 +856,7 @@ private:
         RF_LOG_ERROR("  2. Check: ls -la /tmp/radioform-*");
         RF_LOG_ERROR("  3. Check: cat /tmp/radioform-devices.txt");
         RF_LOG_ERROR("  4. Try: sudo killall coreaudiod");
-        RF_LOG_ERROR("  5. Check logs: log show --predicate 'subsystem == \"com.radioform.driver.v2\"'");
+        RF_LOG_ERROR("  5. Check logs: log show --predicate 'subsystem == \"com.radioform.driver\"'");
     }
 
     // Member variables
