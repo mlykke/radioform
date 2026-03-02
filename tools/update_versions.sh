@@ -45,7 +45,7 @@ if [ -z "$VERSION" ]; then
     VERSION="${GIT_TAG#v}"  # Remove 'v' prefix
 fi
 
-echo "📦 Updating component versions to: $VERSION"
+echo "INFO: Updating component versions to: $VERSION"
 echo ""
 
 # Update RadioformApp Info.plist
@@ -56,9 +56,9 @@ if [ "$UPDATE_APP" = true ]; then
             /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$APP_PLIST"
         /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP_PLIST" 2>/dev/null || \
             /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$APP_PLIST"
-        echo "✓ Updated apps/mac/RadioformApp/Info.plist"
+        echo "OK: Updated apps/mac/RadioformApp/Info.plist"
     else
-        echo "⚠️  Warning: $APP_PLIST not found"
+        echo "WARN: $APP_PLIST not found"
     fi
 fi
 
@@ -70,13 +70,13 @@ if [ "$UPDATE_DRIVER" = true ]; then
             /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$DRIVER_PLIST"
         /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$DRIVER_PLIST" 2>/dev/null || \
             /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$DRIVER_PLIST"
-        echo "✓ Updated packages/driver/Info.plist"
+        echo "OK: Updated packages/driver/Info.plist"
 
         # Update VERSION file
         echo "$VERSION" > "$PROJECT_ROOT/packages/driver/VERSION"
-        echo "✓ Updated packages/driver/VERSION"
+        echo "OK: Updated packages/driver/VERSION"
     else
-        echo "⚠️  Warning: $DRIVER_PLIST not found"
+        echo "WARN: $DRIVER_PLIST not found"
     fi
 fi
 
@@ -88,9 +88,9 @@ if [ "$UPDATE_HOST" = true ]; then
             /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$HOST_PLIST"
         /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$HOST_PLIST" 2>/dev/null || \
             /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$HOST_PLIST"
-        echo "✓ Updated packages/host/Info.plist"
+        echo "OK: Updated packages/host/Info.plist"
     else
-        echo "⚠️  Warning: $HOST_PLIST not found (will be created next)"
+        echo "WARN: $HOST_PLIST not found (will be created next)"
     fi
 fi
 
@@ -107,14 +107,14 @@ if [ "$UPDATE_DRIVER" = true ]; then
         else
             sed -i "s/project(RadioformDriver VERSION [0-9a-zA-Z._-]\+/project(RadioformDriver VERSION $CMAKE_VERSION/" "$DRIVER_CMAKE"
         fi
-        echo "✓ Updated packages/driver/CMakeLists.txt"
+        echo "OK: Updated packages/driver/CMakeLists.txt"
     else
-        echo "⚠️  Warning: $DRIVER_CMAKE not found"
+        echo "WARN: $DRIVER_CMAKE not found"
     fi
 fi
 
 echo ""
-echo "✅ Version update complete"
+echo "OK: Version update complete"
 echo ""
 echo "Updated components:"
 if [ "$UPDATE_APP" = true ]; then

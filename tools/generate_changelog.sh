@@ -19,5 +19,5 @@ echo "Generating changelog for $VERSION..."
 
 git cliff --config .github/cliff.toml --tag "$VERSION" > CHANGELOG.md
 
-echo "✓ CHANGELOG.md updated"
+echo "OK: CHANGELOG.md updated"
 echo "Review changes and commit with: git add CHANGELOG.md && git commit -m 'docs: update changelog for $VERSION'"

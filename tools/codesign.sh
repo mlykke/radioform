@@ -18,14 +18,14 @@ NC='\033[0m' # No Color
 # Function to print section headers
 section() {
     echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}----------------------------------------${NC}"
     echo -e "${BLUE}  $1${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}----------------------------------------${NC}"
 }
 
 # Function to print errors
 error() {
-    echo -e "${RED}❌ ERROR: $1${NC}" >&2
+    echo -e "${RED}ERROR: $1${NC}" >&2
 }
 
 # Function to print warnings
@@ -35,7 +35,7 @@ warn() {
 
 # Function to print success
 success() {
-    echo -e "${GREEN}✓ $1${NC}"
+    echo -e "${GREEN}OK: $1${NC}"
 }
 
 # Check if app bundle exists
@@ -166,7 +166,7 @@ if [ -d "$APP_BUNDLE/Contents/Frameworks" ]; then
         while IFS= read -r macho; do
             if file "$macho" | grep -q "Mach-O"; then
                 local name_rel="${macho#$APP_BUNDLE/}"
-                echo "      ↳ $name_rel"
+                echo "      -> $name_rel"
                 if ! codesign "${SIGN_OPTS[@]}" "$macho"; then
                     error "Failed to sign $name_rel"
                     exit 1
@@ -177,7 +177,7 @@ if [ -d "$APP_BUNDLE/Contents/Frameworks" ]; then
 
     while IFS= read -r framework; do
         NAME=$(basename "$framework")
-        echo "   • $NAME"
+        echo "   - $NAME"
 
         # Sign nested XPC services first (they contain their own Mach-O)
         while IFS= read -r xpc; do
