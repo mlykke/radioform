@@ -34,7 +34,7 @@ help:
 	@echo "  Other:"
 	@echo "    make test         - Run DSP tests"
 	@echo "    make install-deps - Install build dependencies"
-	@echo "    make changelog    - Update CHANGELOG.md (requires git-cliff)"
+	@echo "    make changelog    - Update CHANGELOG.md (optional: VERSION=vX.Y.Z)"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -167,10 +167,5 @@ full-release: build bundle sign verify dmg
 # Update changelog
 changelog:
 	@echo "Updating CHANGELOG.md..."
-	@if ! command -v git-cliff &> /dev/null; then \
-		echo "Error: git-cliff not installed"; \
-		echo "Install with: brew install git-cliff"; \
-		exit 1; \
-	fi
-	@git cliff --config .github/cliff.toml > CHANGELOG.md
+	@./tools/generate_changelog.sh $(if $(VERSION),--tag $(VERSION),)
 	@echo "✓ CHANGELOG.md updated"

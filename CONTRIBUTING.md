@@ -64,6 +64,21 @@ make test
 make help
 ```
 
+## Updating the Changelog
+
+```bash
+# Install changelog generator
+brew install git-cliff
+
+# Generate full changelog (includes all tags + Unreleased)
+make changelog
+
+# Optional: generate up to a specific tag
+make changelog VERSION=v2.1.1
+```
+
+`make changelog` runs `tools/generate_changelog.sh`, which fetches tags from `origin` before rendering so your local changelog doesn't fall behind remote releases.
+
 ## Commit Message Format
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) for automatic changelog generation:
